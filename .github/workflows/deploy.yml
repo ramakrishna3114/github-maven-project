@@ -1,1 +1,60 @@
+name: Full Stack Deployment
 
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout Application Repository
+        uses: actions/checkout@v4
+        with:
+          repository: CloudTechDevOps/Java-springboot-project
+          ref: main
+
+      ################################################
+      # FRONTEND (STREAMLIT)
+      ################################################
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Frontend Dependencies
+        run: |
+          cd frontend
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Stop Existing Frontend
+        run: |
+          pkill -f "streamlit run" || true
+
+      - name: Start Frontend
+        run: |
+          cd frontend
+          nohup streamlit run app.py \
+            --server.address=0.0.0.0 \
+            --server.port=8501 \
+            > streamlit.log 2>&1 &
+
+      ################################################
+      # BACKEND (SPRING BOOT)
+      ################################################
+
+      - name: Build Backend
+        run: |
+          cd backend
+          mvn clean package
+
+      - name: Stop Existing Backend
+        run: |
+          pkill -f "java -jar" || true
+
+      - name: Start Backend
+        run: |
+          cd backend/target
+          nohup java -jar *.jar > backend.log 2>&1 &
